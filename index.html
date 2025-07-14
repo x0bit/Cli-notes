@@ -1,25 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" >
 <head>
   <meta charset="UTF-8" />
   <title>lembard</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
     body {
       background-color: #0f0f0f;
       color: #00ff88;
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Share Tech Mono', monospace;
       font-size: 18px;
       padding: 30px;
       overflow-y: auto;
       position: relative;
       height: 100vh;
       margin: 0;
+      user-select: none;
     }
+
+    /* Retro green glow effect */
+    #terminal, .line, input {
+      text-shadow:
+        0 0 5px #00ff88,
+        0 0 10px #00ff88,
+        0 0 20px #00ff88,
+        0 0 40px #00ff88;
+      letter-spacing: 1.2px;
+    }
+
     .line {
       margin-bottom: 8px;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
+
     #terminal input {
       background: none;
       border: none;
@@ -29,34 +44,67 @@
       outline: none;
       width: 100%;
     }
+
     .corner-left, .corner-right {
       position: fixed;
       bottom: 10px;
       font-size: 14px;
       opacity: 0.6;
       user-select: none;
+      pointer-events: none;
+      z-index: 100;
     }
+
     .corner-left {
       left: 10px;
       color: #00aaaa;
     }
+
     .corner-right {
       right: 10px;
       color: #ffaa00;
     }
+
     a {
       color: #0ff;
       text-decoration: underline;
     }
+
+    /* Scanline effect */
+    body::after {
+      content: "";
+      pointer-events: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,255,0,0.03),
+        rgba(0,255,0,0.03) 1px,
+        transparent 2px,
+        transparent 4px
+      );
+      z-index: 99;
+      animation: scanlineAnim 8s linear infinite;
+    }
+
+    @keyframes scanlineAnim {
+      0% { background-position-y: 0; }
+      100% { background-position-y: 8px; }
+    }
+
   </style>
 </head>
 <body>
-  <div id="terminal"></div>
+  <div id="terminal" aria-live="polite" aria-atomic="true" role="log"></div>
 
   <div class="corner-left" id="presenterLeft"></div>
   <div class="corner-right" id="presenterRight"></div>
 
 <script>
+  // Terminal typing sound
+  const typingSound = new Audio('https://freesound.org/data/previews/170/170218_2437358-lq.mp3');
+  typingSound.volume = 0.07;
+
   // Random presenter messages
   const presentersLeft = [
     "presented by 69",
@@ -77,227 +125,328 @@
   document.getElementById("presenterRight").textContent =
     presentersRight[Math.floor(Math.random() * presentersRight.length)];
 
-  // Terminal setup
-  const terminal = document.getElementById("terminal");
+  // Fake filesystem & file contents
+  const fakeFS = {
+    "home": ["lembard", "projects"],
+    "projects": ["sybca", "demo.sh"],
+    "sybca": ["README.md", "index.html"],
+  };
 
+  const fakeFiles = {
+    "README.md": `# Sybca Project
+
+This is a fake README file for the sybca project.
+
+Welcome to this cool terminal interface!`,
+    "index.html": `<!DOCTYPE html>
+<html>
+<head><title>Sybca</title></head>
+<body><h1>Hello from Sybca!</h1></body>
+</html>`,
+    "demo.sh": `#!/bin/bash
+echo "This is a demo script!"`,
+  };
+
+  // Multiple fake users for prompt
+  const users = ["lembard", "alpha", "guest", "root", "cyber"];
+  const hosts = ["sybca", "localhost", "terminal", "sysbox"];
+
+  let currentUser = users[Math.floor(Math.random() * users.length)];
+  let currentHost = hosts[Math.floor(Math.random() * hosts.length)];
+  let currentDir = "home";
+
+  // Command history and position
+  const history = [];
+  let histPos = -1;
+
+  // Boot lines to show on page load
   const bootLines = [
     "Initializing system...",
     "Loading modules...",
     "Authenticating user...",
-    "Welcome to sybca.",
+    `Welcome to ${currentHost}.`,
     "Status: ONLINE."
   ];
 
-  const fakeFS = {
-    "home": ["lembard", "projects"],
-    "projects": ["sybca", "demo.sh"],
-    "sybca": ["README.md", "index.html"]
-  };
-  let currentDir = "home";
-
-  // Type out boot lines
-  function typeLine(lines, callback) {
-    let i = 0;
-    function next() {
-      if (i < lines.length) {
-        let line = document.createElement("div");
-        line.classList.add("line");
-        terminal.appendChild(line);
-        let j = 0;
-        const typer = setInterval(() => {
-          line.textContent += lines[i][j++];
-          if (j === lines[i].length) {
-            clearInterval(typer);
-            i++;
-            setTimeout(next, 400);
-          }
-        }, 40);
-      } else {
-        callback();
-      }
-    }
-    next();
+  // Utility delay
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Shell prompt
+  // Type out boot lines with animation
+  async function typeLine(lines) {
+    for (let lineText of lines) {
+      const line = document.createElement("div");
+      line.classList.add("line");
+      terminal.appendChild(line);
+      for (let ch of lineText) {
+        line.textContent += ch;
+        try { typingSound.currentTime = 0; typingSound.play(); } catch {}
+        await sleep(40);
+      }
+      await sleep(300);
+    }
+  }
+
+  // Add prompt line and input box
   function shellPrompt() {
     const prompt = document.createElement("div");
     prompt.classList.add("line");
-    prompt.innerHTML = `<span style="color: #0ff">user@sybca</span>:~/$ `;
+
+    // Randomize prompt user/host every prompt (optional)
+    if (Math.random() < 0.05) {
+      currentUser = users[Math.floor(Math.random() * users.length)];
+      currentHost = hosts[Math.floor(Math.random() * hosts.length)];
+    }
+
+    prompt.innerHTML = `<span style="color: #0ff">${currentUser}@${currentHost}</span>:<span style="color:#aaa">~/${currentDir}</span>$ `;
     const input = document.createElement("input");
     input.type = "text";
+    input.setAttribute("aria-label", "Terminal command input");
     prompt.appendChild(input);
     terminal.appendChild(prompt);
     input.focus();
 
-    input.addEventListener("keydown", function (e) {
+    histPos = history.length;
+
+    input.addEventListener("keydown", async function (e) {
       if (e.key === "Enter") {
         const command = input.value.trim();
+        if(command !== "") history.push(command);
         input.disabled = true;
-        handleCommand(command.toLowerCase());
+        await handleCommand(command.toLowerCase());
+      }
+      else if (e.key === "ArrowUp") {
+        if (histPos > 0) {
+          histPos--;
+          input.value = history[histPos];
+          e.preventDefault();
+        }
+      }
+      else if (e.key === "ArrowDown") {
+        if (histPos < history.length -1) {
+          histPos++;
+          input.value = history[histPos];
+          e.preventDefault();
+        } else {
+          histPos = history.length;
+          input.value = "";
+        }
+      }
+      else if (e.key === "Tab") {
+        e.preventDefault();
+        const val = input.value;
+        const completions = getAutocomplete(val);
+        if (completions.length === 1) {
+          input.value = completions[0] + (val.endsWith(" ") ? "" : " ");
+        } else if (completions.length > 1) {
+          showMultipleCompletions(completions);
+        }
       }
     });
   }
 
-  // Chatbot prompt (separate shell mode)
-  function shellPromptChat() {
-    const prompt = document.createElement("div");
-    prompt.classList.add("line");
-    prompt.innerHTML = `<span style="color: #0ff">chatbot@sybca</span>:~/$ `;
-    const input = document.createElement("input");
-    input.type = "text";
-    prompt.appendChild(input);
-    terminal.appendChild(prompt);
-    input.focus();
-
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        const message = input.value.trim();
-        input.disabled = true;
-
-        const botResponse = document.createElement("div");
-        botResponse.classList.add("line");
-        botResponse.textContent = generateChatbotReply(message);
-        terminal.appendChild(botResponse);
-
-        if (message.toLowerCase() === "exit") {
-          shellPrompt(); // back to normal shell
-        } else {
-          shellPromptChat(); // continue chat
-        }
-
-        terminal.scrollTop = terminal.scrollHeight;
-      }
-    });
+  // Show possible completions when multiple matches found
+  function showMultipleCompletions(completions) {
+    const line = document.createElement("div");
+    line.classList.add("line");
+    line.textContent = completions.join("    ");
+    terminal.appendChild(line);
   }
 
-  // Basic chatbot responses
-  function generateChatbotReply(msg) {
-    msg = msg.toLowerCase();
-    if (msg.includes("hello")) return "Hi there! How can I help you?";
-    if (msg.includes("how are you")) return "I'm just code, but I'm doing great!";
-    if (msg.includes("help")) return "You can type 'exit' to leave chat.";
-    return "I don't understand that yet, try something else or type 'exit'.";
-  }
+  // Commands and dirs for autocomplete
+  const commands = [
+    "help", "ls", "cd", "clear", "exit", "quit", "github", "repo",
+    "joke", "chat", "open github", "cat", "man", "edit", "ping", "traceroute"
+  ];
 
-  // Fetch GitHub repo info
-  async function fetchGitHubInfo() {
-    const apiURL = "https://api.github.com/repos/lembard/sybca";
-    try {
-      const response = await fetch(apiURL);
-      if (!response.ok) throw new Error("Failed to fetch GitHub info");
-      const data = await response.json();
-      return `
-Repo: ${data.full_name}
-Description: ${data.description || "No description"}
-Stars: ${data.stargazers_count}
-Forks: ${data.forks_count}
-Open Issues: ${data.open_issues_count}
-URL: ${data.html_url}
-      `.trim();
-    } catch (error) {
-      return "Error fetching GitHub repo info.";
-    }
-  }
+  // Simple autocomplete: completes commands or dirs in current dir
+  function getAutocomplete(text) {
+    text = text.trim();
+    if (text === "") return [];
 
-  // Fetch random joke
-  async function fetchRandomJoke() {
-    try {
-      const res = await fetch("https://official-joke-api.appspot.com/random_joke");
-      if (!res.ok) throw new Error("Failed to fetch joke");
-      const joke = await res.json();
-      return `${joke.setup}\n${joke.punchline}`;
-    } catch {
-      return "Could not fetch a joke at this time.";
-    }
-  }
-
-  // Handle commands (async because of API calls)
-  async function handleCommand(cmd) {
-    const output = document.createElement("div");
-    output.classList.add("line");
-
-    // Commands that require async handling return early after finishing
-
-    switch (cmd) {
-      case "help":
-        output.innerHTML = "Available commands: <b>ls</b>, <b>cd</b>, <b>clear</b>, <b>exit</b>, <b>quit</b>, <b>help</b>, <b>github</b>, <b>joke</b>, <b>chat</b>, <b>open github</b>";
-        break;
-      case "ls":
-        output.textContent = (fakeFS[currentDir] || []).join("    ");
-        break;
-      case "cd":
-        output.textContent = "Usage: cd [dir]";
-        break;
-      case "cd ..":
-        currentDir = "home";
-        output.textContent = "Moved to home";
-        break;
-      case "cd sybca":
-        currentDir = "sybca";
-        output.textContent = "Moved to sybca/";
-        break;
-      case "clear":
-        terminal.innerHTML = "";
-        shellPrompt();
-        return;
-      case "exit":
-      case "quit":
-        output.textContent = "Redirecting to GitHub repo...";
-        terminal.appendChild(output);
-        setTimeout(() => {
-          window.location.href = "https://github.com/lembard/sybca";
-        }, 1200);
-        return;
-      case "github":
-      case "repo":
-        output.textContent = "Fetching GitHub repo info...";
-        terminal.appendChild(output);
-        const info = await fetchGitHubInfo();
-        output.textContent = info;
-        shellPrompt();
-        return;
-      case "joke":
-        output.textContent = "Fetching a joke...";
-        terminal.appendChild(output);
-        const joke = await fetchRandomJoke();
-        output.textContent = joke;
-        shellPrompt();
-        return;
-      case "chat":
-        output.textContent = "Entering chatbot mode. Type your messages. Type 'exit' to quit.";
-        terminal.appendChild(output);
-        shellPromptChat();
-        return;
-      case "open github":
-        output.innerHTML = `Opening GitHub repo: <a href="https://github.com/lembard/sybca" target="_blank" rel="noopener noreferrer">https://github.com/lembard/sybca</a>`;
-        break;
-      case "":
-        output.textContent = "";
-        break;
-      default:
-        if (cmd.startsWith("cd ")) {
-          const dir = cmd.slice(3);
-          if (fakeFS[dir]) {
-            currentDir = dir;
-            output.textContent = `Moved to ${dir}/`;
-          } else {
-            output.textContent = `cd: no such directory: ${dir}`;
-          }
-        } else {
-          output.textContent = `${cmd}: command not found`;
-        }
-        break;
+    const parts = text.split(/\s+/);
+    if (parts.length === 1) {
+      // autocomplete command names
+      return commands.filter(c => c.startsWith(text));
+    } else if (parts.length === 2 && parts[0] === "cd") {
+      // autocomplete directories
+      const dirs = Object.keys(fakeFS);
+      return dirs.filter(d => d.startsWith(parts[1]));
+    } else if (parts.length === 2 && parts[0] === "cat") {
+      // autocomplete files in current dir
+      const files = fakeFS[currentDir] || [];
+      return files.filter(f => f.startsWith(parts[1]));
     }
 
-    terminal.appendChild(output);
+    return [];
+  }
+
+  // Simulate some network commands (fake output)
+  async function simulateNetworkCommand(cmd) {
+    await sleep(500);
+    if(cmd.startsWith("ping")) {
+      return `PING ${cmd.split(" ")[1] || "example.com"} (93.184.216.34): 56 data bytes
+64 bytes from 93.184.216.34: icmp_seq=0 ttl=56 time=10.2 ms
+64 bytes from 93.184.216.34: icmp_seq=1 ttl=56 time=10.0 ms
+64 bytes from 93.184.216.34: icmp_seq=2 ttl=56 time=9.8 ms
+
+--- example.com ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss`;
+    }
+    else if(cmd.startsWith("traceroute")) {
+      return `traceroute to example.com (93.184.216.34), 30 hops max
+ 1  192.168.1.1  1.123 ms  0.948 ms  1.034 ms
+ 2  10.10.0.1  10.203 ms  9.999 ms  10.104 ms
+ 3  93.184.216.34  20.123 ms  19.999 ms  20.301 ms`;
+    }
+    return "Unknown network command.";
+  }
+
+  // Simple man pages for some commands
+  const manPages = {
+    "ls": "ls: list directory contents.\nUsage: ls",
+    "cd": "cd: change directory.\nUsage: cd [directory]",
+    "clear": "clear: clear terminal screen.\nUsage: clear",
+    "help": "help: display list of commands.\nUsage: help",
+    "github": "github/repo: fetch info about the GitHub repo.\nUsage: github",
+    "joke": "joke: fetch a random joke.\nUsage: joke",
+    "chat": "chat: enter simple chatbot mode.\nUsage: chat",
+    "exit": "exit/quit: exit and redirect to GitHub repo.\nUsage: exit",
+    "cat": "cat: display file contents.\nUsage: cat [filename]",
+    "man": "man: show manual page.\nUsage: man [command]",
+    "edit": "edit: simulate editing a file.\nUsage: edit [filename]",
+    "ping": "ping: simulate ping command.\nUsage: ping [host]",
+    "traceroute": "traceroute: simulate traceroute command.\nUsage: traceroute [host]"
+  };
+
+  // Handle single commands or chain with && or ;
+  async function handleCommand(commandLine) {
+    const commandsToRun = commandLine.split(/&&|;/).map(cmd => cmd.trim()).filter(Boolean);
+
+    for(let cmd of commandsToRun) {
+      if(await runSingleCommand(cmd) === false) break;
+    }
+
     shellPrompt();
     terminal.scrollTop = terminal.scrollHeight;
   }
 
-  // Start boot sequence and then shell prompt
-  typeLine(bootLines, shellPrompt);
+  // Run individual command, returns false if exit to stop
+  async function runSingleCommand(cmdLine) {
+    if(cmdLine === "") return;
+
+    // Show command echo
+    const line = document.createElement("div");
+    line.classList.add("line");
+    line.innerHTML = `<span style="color: #0ff">${currentUser}@${currentHost}</span>:<span style="color:#aaa">~/${currentDir}</span>$ ${cmdLine}`;
+    terminal.appendChild(line);
+
+    const [cmd, ...args] = cmdLine.split(/\s+/);
+    switch(cmd) {
+      case "help":
+        printLines(Object.keys(manPages).sort().join(", "));
+        break;
+
+      case "ls":
+        const items = fakeFS[currentDir] || [];
+        printLines(items.join("  ") || "(empty directory)");
+        break;
+
+      case "cd":
+        if(args.length === 0) {
+          currentDir = "home";
+        } else if(fakeFS[args[0]]) {
+          currentDir = args[0];
+        } else {
+          printLines(`cd: no such directory: ${args[0]}`);
+        }
+        break;
+
+      case "clear":
+        terminal.innerHTML = "";
+        break;
+
+      case "exit":
+      case "quit":
+        printLines("Redirecting to GitHub repo...");
+        await sleep(1500);
+        window.location.href = "https://github.com/lembard/sybca";
+        return false;
+
+      case "github":
+      case "repo":
+        printLines("GitHub repository: https://github.com/lembard/sybca");
+        break;
+
+      case "joke":
+        printLines("Why do programmers prefer dark mode? Because light attracts bugs!");
+        break;
+
+      case "chat":
+        printLines("Chat feature coming soon! (Just kidding.)");
+        break;
+
+      case "cat":
+        if(args.length === 0) {
+          printLines("cat: missing filename");
+        } else {
+          const fileName = args[0];
+          if(fakeFiles[fileName]) {
+            printLines(fakeFiles[fileName]);
+          } else {
+            printLines(`cat: ${fileName}: No such file`);
+          }
+        }
+        break;
+
+      case "man":
+        if(args.length === 0) {
+          printLines("Usage: man [command]");
+        } else if(manPages[args[0]]) {
+          printLines(manPages[args[0]]);
+        } else {
+          printLines(`No manual entry for ${args[0]}`);
+        }
+        break;
+
+      case "edit":
+        if(args.length === 0) {
+          printLines("edit: missing filename");
+        } else {
+          printLines(`Simulated editing file: ${args[0]}`);
+        }
+        break;
+
+      case "ping":
+      case "traceroute":
+        printLines(await simulateNetworkCommand(cmdLine));
+        break;
+
+      default:
+        printLines(`command not found: ${cmd}`);
+    }
+  }
+
+  // Print multiple lines to terminal
+  function printLines(text) {
+    const lines = text.split("\n");
+    for(let l of lines) {
+      const line = document.createElement("div");
+      line.classList.add("line");
+      line.textContent = l;
+      terminal.appendChild(line);
+    }
+  }
+
+  // Initialize terminal and start
+  const terminal = document.getElementById("terminal");
+  (async () => {
+    await typeLine(bootLines);
+    shellPrompt();
+  })();
 
 </script>
+
 </body>
 </html>
