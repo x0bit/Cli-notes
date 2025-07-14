@@ -2,21 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CLI PDF Reader</title>
 
-  <!-- Firebase -->
+  <!-- Firebase CDN -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 
-  <!-- Vue 3 -->
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.15/dist/vue.global.prod.js"></script>
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3.4.15/dist/vue.global.prod.js"></script>
 
-  <!-- Style -->
   <style>
     body {
-      background-color: #000;
+      background-color: black;
       color: #00ff00;
       font-family: monospace;
       padding: 20px;
@@ -28,7 +27,6 @@
       border: none;
       outline: none;
       width: 100%;
-      font-family: monospace;
     }
 
     a {
@@ -38,103 +36,41 @@
 
     iframe {
       border: 2px solid #00ff00;
+      border-radius: 4px;
       width: 100%;
       height: 500px;
       margin-top: 20px;
-      border-radius: 5px;
-    }
-
-    @media (max-width: 600px) {
-      iframe {
-        height: 300px;
-      }
-
-      textarea {
-        height: 100px;
-      }
-    }
-
-    .btn {
-      padding: 5px 10px;
-      background-color: #00ff00;
-      border: none;
-      color: black;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-
-    .btn-secondary {
-      background-color: #555;
-      color: #fff;
     }
 
     textarea {
-      width: 100%;
-      font-family: monospace;
-      background: #000;
+      background: black;
       color: #00ff00;
       border: 1px solid #00ff00;
+      width: 100%;
       padding: 10px;
-      resize: vertical;
+      font-family: monospace;
     }
 
-    h2, h4 {
-      margin-top: 20px;
-      color: #00ff00;
+    button {
+      background-color: #00ff00;
+      color: black;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin-top: 10px;
     }
 
-    input[type='text'] {
-      padding: 5px;
+    @media (max-width: 600px) {
+      iframe { height: 300px; }
+      textarea { height: 100px; }
     }
   </style>
 </head>
-
 <body>
-  <div id="app">
-    <!-- CLI Boot -->
-    <div v-if="!entered">
-      <div v-for="line in bootLogs" :key="line">{{ line }}</div>
-      <div v-if="authUser">
-        > <input type="text" class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command: enter /sem3">
-      </div>
-      <div v-else class="mt-3">
-        > Please <button class="btn" @click="signIn">Login with Google</button>
-      </div>
-    </div>
-
-    <!-- File Browser -->
-    <div v-else>
-      <div>
-        <h2>📁 CLI Reader ({{ authUser.displayName }})</h2>
-        <button class="btn btn-secondary" @click="logout">Logout</button>
-      </div>
-
-      <input class="cli mt-3" v-model="searchQuery" placeholder="Search files..." />
-
-      <ul>
-        <li v-for="(subject, subjectName) in filteredFiles" :key="subjectName">
-          <strong>{{ subjectName }}</strong>
-          <ul>
-            <li v-for="file in subject" :key="file.name">
-              <a :href="file.url" target="pdfFrame" @click="loadNotes(file.name)">{{ file.name }}</a>
-            </li>
-          </ul>
-        </li>
-      </ul>
-
-      <iframe name="pdfFrame"></iframe>
-
-      <h4>📝 Notes for: {{ currentDoc }}</h4>
-      <textarea v-model="notes" placeholder="Write your notes here..."></textarea>
-      <div>
-        <button class="btn" @click="saveNotes">💾 Save Notes</button>
-        <button class="btn btn-secondary" @click="cdBack">⬅️ cd ..</button>
-      </div>
-    </div>
-  </div>
+  <div id="app"></div>
 
   <script>
-    const { createApp } = Vue;
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
 
     const firebaseConfig = {
       apiKey: "AIza...xyz",
@@ -145,112 +81,167 @@
       appId: "1:123456789012:web:abcdefg12345"
     };
 
-    const appFB = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     createApp({
-      data() {
-        return {
-          bootLogs: [
-            "Initializing system...",
-            "Loading modules...",
-            "Authenticating user...",
-            `Welcome to ${window.location.hostname}.`,
-            "Status: ONLINE."
-          ],
-          entered: false,
-          command: '',
-          authUser: null,
-          notes: '',
-          currentDoc: '',
-          files: {},
-          searchQuery: ''
-        };
-      },
-      computed: {
-        filteredFiles() {
-          if (!this.searchQuery) return this.files;
-          const query = this.searchQuery.toLowerCase();
+      setup() {
+        const bootLogs = ref([
+          "Initializing system...",
+          "Loading modules...",
+          "Authenticating user...",
+          `Welcome to ${window.location.hostname}.`,
+          "Status: ONLINE."
+        ]);
+        const entered = ref(false);
+        const command = ref("");
+        const authUser = ref(null);
+        const notes = ref("");
+        const currentDoc = ref("");
+        const files = reactive({});
+        const searchQuery = ref("");
+
+        const filteredFiles = computed(() => {
+          if (!searchQuery.value) return files;
+          const query = searchQuery.value.toLowerCase();
           const result = {};
-          for (const [subject, files] of Object.entries(this.files)) {
-            const match = files.filter(file => file.name.toLowerCase().includes(query));
+          for (const [subject, fileList] of Object.entries(files)) {
+            const match = fileList.filter(file => file.name.toLowerCase().includes(query));
             if (match.length) result[subject] = match;
           }
           return result;
-        }
-      },
-      created() {
-        auth.onAuthStateChanged(user => {
-          this.authUser = user;
-          if (user) this.loadFileList();
         });
-      },
-      methods: {
-        async signIn() {
+
+        const signIn = async () => {
           const provider = new firebase.auth.GoogleAuthProvider();
           try {
             await auth.signInWithPopup(provider);
           } catch (err) {
             alert("Login failed");
           }
-        },
-        async logout() {
+        };
+
+        const logout = async () => {
           await auth.signOut();
           location.reload();
-        },
-        processCommand() {
-          const cmd = this.command.trim().toLowerCase();
-          if (cmd === 'enter /sem3') {
-            this.entered = true;
-          } else if (cmd === 'exit') {
-            this.logout();
-          } else {
-            this.bootLogs.push(`Unknown command: ${this.command}`);
+        };
+
+        const processCommand = () => {
+          const cmd = command.value.trim().toLowerCase();
+          if (cmd === "enter /sem3") entered.value = true;
+          else if (cmd === "exit") logout();
+          else bootLogs.value.push(`Unknown command: ${cmd}`);
+          command.value = "";
+        };
+
+        const cdBack = () => {
+          entered.value = false;
+          notes.value = "";
+          currentDoc.value = "";
+        };
+
+        const getSubjectFromFile = (docName) => {
+          for (const [subject, fileList] of Object.entries(files)) {
+            if (fileList.find(file => file.name === docName)) return subject;
           }
-          this.command = '';
-        },
-        cdBack() {
-          this.entered = false;
-          this.notes = '';
-          this.currentDoc = '';
-        },
-        async loadFileList() {
+          return "Unknown";
+        };
+
+        const loadNotes = async (docName) => {
+          currentDoc.value = docName;
+          const ref = db.collection("notes").doc(`${authUser.value.uid}_${docName}`);
+          const doc = await ref.get();
+          notes.value = doc.exists ? doc.data().text : "";
+        };
+
+        const saveNotes = async () => {
+          const ref = db.collection("notes").doc(`${authUser.value.uid}_${currentDoc.value}`);
+          await ref.set({
+            text: notes.value,
+            subject: getSubjectFromFile(currentDoc.value),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("✅ Notes saved");
+        };
+
+        const loadFileList = async () => {
           try {
             const res = await fetch("https://harnitya29.github.io/sem3/docs.json");
             const json = await res.json();
             for (const [subject, urls] of Object.entries(json)) {
-              this.files[subject] = urls.map(url => ({
-                name: url.split('/').pop(),
+              files[subject] = urls.map(url => ({
+                name: url.split("/").pop(),
                 url
               }));
             }
           } catch (err) {
             console.error("Failed to load docs.json", err);
           }
-        },
-        getSubjectFromFile(docName) {
-          for (const [subject, files] of Object.entries(this.files)) {
-            if (files.find(file => file.name === docName)) return subject;
-          }
-          return 'Unknown';
-        },
-        async loadNotes(docName) {
-          this.currentDoc = docName;
-          const ref = db.collection('notes').doc(`${this.authUser.uid}_${docName}`);
-          const doc = await ref.get();
-          this.notes = doc.exists ? doc.data().text : '';
-        },
-        async saveNotes() {
-          const ref = db.collection('notes').doc(`${this.authUser.uid}_${this.currentDoc}`);
-          await ref.set({
-            text: this.notes,
-            subject: this.getSubjectFromFile(this.currentDoc),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        onMounted(() => {
+          auth.onAuthStateChanged(user => {
+            authUser.value = user;
+            if (user) loadFileList();
           });
-          alert("✅ Notes saved");
-        }
-      }
+        });
+
+        return {
+          bootLogs,
+          entered,
+          command,
+          authUser,
+          notes,
+          currentDoc,
+          files,
+          searchQuery,
+          filteredFiles,
+          signIn,
+          logout,
+          processCommand,
+          cdBack,
+          loadNotes,
+          saveNotes
+        };
+      },
+      template: `
+        <div>
+          <div v-if="!entered">
+            <div v-for="line in bootLogs" :key="line">{{ line }}</div>
+            <div v-if="authUser">
+              > <input class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command: enter /sem3" />
+            </div>
+            <div v-else>
+              > Please <button @click="signIn">Login with Google</button>
+            </div>
+          </div>
+
+          <div v-else>
+            <h2>📁 CLI Reader ({{ authUser.displayName }})</h2>
+            <button @click="logout">Logout</button>
+            <br/><br/>
+            <input class="cli" v-model="searchQuery" placeholder="Search files..." />
+            <ul>
+              <li v-for="(subject, subjectName) in filteredFiles" :key="subjectName">
+                <strong>{{ subjectName }}</strong>
+                <ul>
+                  <li v-for="file in subject" :key="file.name">
+                    <a :href="file.url" target="pdfFrame" @click="loadNotes(file.name)">{{ file.name }}</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+
+            <iframe name="pdfFrame"></iframe>
+
+            <h4>📝 Notes for: {{ currentDoc }}</h4>
+            <textarea v-model="notes" placeholder="Write your notes here..."></textarea><br/>
+            <button @click="saveNotes">💾 Save Notes</button>
+            <button @click="cdBack">⬅️ cd ..</button>
+          </div>
+        </div>
+      `
     }).mount('#app');
   </script>
 </body>
