@@ -58,12 +58,10 @@
       border: none;
       padding: 5px 10px;
       margin: 10px;
-       border-radius: 4px ;
+      border-radius: 4px ;
       cursor: pointer;
       font-family: 'Fira Code', monospace;
     }
-
-
     .container {
       display: flex;
       flex-direction: row;
@@ -105,12 +103,12 @@
 </head>
 <body :data-theme="theme">
   <div id="app">
-    <button @click="toggleTheme"> 🌓 </button>
+    <button @click="toggleTheme"> 🌓 Theme</button>
 
     <div v-if="!entered">
       <div v-for="(line, i) in displayedBootLogs" :key="i" class="boot-line" :class="{ visible: visibleLines > i }">{{ line }}</div>
       <div v-if="visibleLines >= bootLogs.length">
-        > <input class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command (e.g., help)" autofocus />
+        > <input class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command (e.g., 69, help)" autofocus />
         <div class="cli-output" v-for="msg in outputLogs" :key="msg">{{ msg }}</div>
       </div>
     </div>
@@ -225,7 +223,7 @@
           } else if (cmd === 'whoami') {
             outputLogs.value.push('👤 You are browsing from: ' + navigator.userAgent);
           } else if (cmd === 'help') {
-            outputLogs.value.push('📘 Available commands: help, date, whoami, 69 , clear');
+            outputLogs.value.push('📘 Available commands: help, date, whoami, 69');
           } else if (cmd === 'clear') {
             outputLogs.value = [];
           } else {
