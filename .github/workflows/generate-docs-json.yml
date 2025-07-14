@@ -20,26 +20,26 @@ jobs:
         run: |
           echo '{' > docs.json
           first=1
-          while IFS= read -r -d '' file; do
+          find . -type f \( -iname "*.pdf" -o -iname "*.ppt" -o -iname "*.pptx" \) | while read -r file; do
             relpath="${file#./}"
             dirname=$(dirname "$relpath")
             filename=$(basename "$file")
             url="https://harnitya29.github.io/sem3/$relpath"
             key="${dirname//\//_}"
-            if [[ $first -eq 1 ]]; then
-              echo "  \"$key\": [\"$url\"" >> docs.json
-              first=0
+
+            if grep -q "\"$key\":" docs.json; then
+              sed -i "/\"$key\": \[/a\    \"$url\"," docs.json
             else
-              if grep -q "\"$key\":" docs.json; then
-                sed -i "/\"$key\": \[/a\ \ \"$url\"," docs.json
-              else
-                echo "  ,\"$key\": [\"$url\"" >> docs.json
+              if [[ $first -eq 0 ]]; then
+                echo "," >> docs.json
               fi
+              echo "  \"$key\": [" >> docs.json
+              echo "    \"$url\"" >> docs.json
+              echo "  ]" >> docs.json
+              first=0
             fi
-          done < <(find . -type f \\( -name '*.pdf' -o -name '*.ppt' -o -name '*.pptx' \\) -print0)
-          sed -i 's/,$//' docs.json
-          echo "  ]" >> docs.json
-          echo '}' >> docs.json
+          done
+          echo "}" >> docs.json
 
       - name: Commit docs.json
         uses: stefanzweifel/git-auto-commit-action@v5
