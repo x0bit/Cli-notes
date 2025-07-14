@@ -11,22 +11,24 @@
     :root {
       --bg: #000;
       --fg: #00ff00;
+      --burger-color: white;
     }
 
     body[data-theme="light"] {
       --bg: #f0f0f0;
       --fg: #647b92;
+      --burger-color: black;
     }
 
     body {
       background-color: var(--bg);
       color: var(--fg);
       font-family: 'Fira Code', monospace;
-      padding: 0;
       margin: 0;
       transition: background 0.3s, color 0.3s;
     }
-    input.cli {
+
+    .cli {
       background-color: var(--bg);
       color: var(--fg);
       border: 1px solid var(--fg);
@@ -34,76 +36,118 @@
       padding: 6px;
       font-family: 'Fira Code', monospace;
     }
+
     a {
       color: var(--fg);
       text-decoration: none;
-      cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
       transition: transform 0.2s ease-in-out;
     }
+
     a:hover {
       transform: scale(1.02);
     }
+
     iframe {
       width: 100%;
-      height: 500px;
-      border: 2px solid var(--fg);
-      margin-top: 10px;
+      height: 100vh;
+      border: none;
     }
+
     button {
       background-color: var(--fg);
       color: var(--bg);
       border: none;
       padding: 5px 10px;
       margin: 10px;
-      border-radius: 4px ;
+      border-radius: 4px;
       cursor: pointer;
       font-family: 'Fira Code', monospace;
     }
+
     .container {
       display: flex;
       flex-direction: row;
       height: 100vh;
     }
+
     .sidebar {
       width: 300px;
       padding: 20px;
       border-right: 1px solid var(--fg);
       overflow-y: auto;
+      transition: transform 0.3s ease-in-out;
     }
+
     .main {
       flex: 1;
       padding: 20px;
       overflow-y: auto;
     }
+
     @media (max-width: 768px) {
       .container {
         flex-direction: column;
       }
       .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--fg);
+        position: fixed;
+        top: 50px;
+        left: 0;
+        bottom: 0;
+        height: calc(100% - 50px);
+        width: 80%;
+        max-width: 300px;
+        background: var(--bg);
+        z-index: 1000;
+        transform: translateX(-100%);
+        border-right: 1px solid var(--fg);
+      }
+      .sidebar.show {
+        transform: translateX(0);
       }
     }
+
     .boot-line {
       opacity: 0;
       transition: opacity 0.5s ease;
     }
+
     .boot-line.visible {
       opacity: 1;
     }
+
     .cli-output {
       margin-top: 10px;
       font-size: 0.9em;
     }
+
+    .burger {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 20px;
+      margin: 10px;
+      transition: transform 0.3s ease;
+      color: var(--burger-color);
+    }
+
+    .burger.rotate {
+      transform: rotate(90deg);
+    }
+
+    @media (max-width: 768px) {
+      .burger {
+        display: inline;
+      }
+    }
   </style>
 </head>
-<body :data-theme="theme">
+<body :data-theme="theme" @click="handleBodyClick">
   <div id="app">
-    <button @click="toggleTheme"> 🌓 Theme</button>
+    <button :class="['burger', { rotate: sidebarVisible }]" @click.stop="toggleSidebar">☰</button>
+    <button @click="toggleTheme">🌓 Theme</button>
 
     <div v-if="!entered">
       <div v-for="(line, i) in displayedBootLogs" :key="i" class="boot-line" :class="{ visible: visibleLines > i }">{{ line }}</div>
@@ -113,11 +157,15 @@
       </div>
     </div>
 
+    <div v-else-if="viewerUrl">
+      <iframe :src="viewerUrl" allowfullscreen></iframe>
+      <button @click="cdBack">⬅️ cd ..</button>
+    </div>
+
     <div v-else class="container">
-      <div class="sidebar">
+      <div class="sidebar" :class="{ show: sidebarVisible }" ref="sidebarRef">
         <h3>📁 Navigation</h3>
         <input class="cli" v-model="searchQuery" placeholder="Search files..." />
-
         <ul>
           <li v-for="(files, subject) in filteredFiles" :key="subject">
             <strong>📂 {{ subject }}</strong>
@@ -131,17 +179,9 @@
           </li>
         </ul>
       </div>
-
       <div class="main">
         <h2>📄 Viewer ({{ currentDoc || 'No file selected' }})</h2>
-
-        <div v-if="viewerUrl">
-          <iframe :src="viewerUrl" allowfullscreen></iframe>
-        </div>
-        <div v-else>
-          <p><em>Select a file to preview...</em></p>
-        </div>
-
+        <p><em>Select a file to preview...</em></p>
         <button @click="cdBack">⬅️ cd ..</button>
       </div>
     </div>
@@ -149,7 +189,6 @@
 
   <script>
     const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
-
     const beep = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
 
     createApp({
@@ -171,7 +210,20 @@
         const currentDoc = ref('');
         const viewerUrl = ref('');
         const theme = ref(localStorage.getItem('cliTheme') || 'dark');
+        const sidebarVisible = ref(false);
         const files = reactive({});
+
+        const sidebarRef = ref(null);
+
+        const handleBodyClick = (e) => {
+          if (sidebarVisible.value && sidebarRef.value && !sidebarRef.value.contains(e.target)) {
+            sidebarVisible.value = false;
+          }
+        };
+
+        const toggleSidebar = () => {
+          sidebarVisible.value = !sidebarVisible.value;
+        };
 
         onMounted(() => {
           const interval = setInterval(() => {
@@ -189,6 +241,17 @@
               toggleTheme();
               e.preventDefault();
             }
+          });
+
+          let startX = 0;
+          document.body.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+          });
+
+          document.body.addEventListener('touchend', e => {
+            const deltaX = e.changedTouches[0].clientX - startX;
+            if (deltaX > 50) sidebarVisible.value = true;
+            if (deltaX < -50) sidebarVisible.value = false;
           });
         });
 
@@ -233,7 +296,6 @@
         }
 
         function cdBack() {
-          entered.value = false;
           viewerUrl.value = '';
           currentDoc.value = '';
         }
@@ -242,7 +304,6 @@
           try {
             const res = await fetch('docs.json');
             const data = await res.json();
-
             for (const [subject, urls] of Object.entries(data)) {
               files[subject] = urls.map(url => ({
                 name: url.split('/').pop(),
@@ -259,6 +320,7 @@
           currentDoc.value = file.name;
           const encodedURL = encodeURIComponent(file.url);
           viewerUrl.value = `https://docs.google.com/gview?url=${encodedURL}&embedded=true`;
+          sidebarVisible.value = false;
         }
 
         function getFileIcon(name) {
@@ -286,11 +348,15 @@
           currentDoc,
           viewerUrl,
           theme,
+          sidebarVisible,
           toggleTheme,
           processCommand,
           cdBack,
           openViewer,
-          getFileIcon
+          getFileIcon,
+          toggleSidebar,
+          sidebarRef,
+          handleBodyClick
         };
       }
     }).mount('#app');
