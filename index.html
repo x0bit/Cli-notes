@@ -11,13 +11,16 @@
       font-size: 18px;
       padding: 30px;
       overflow-y: auto;
+      position: relative;
     }
+
     .cursor {
       display: inline-block;
       width: 10px;
       background-color: #00ff88;
       animation: blink 1s step-start infinite;
     }
+
     #terminal input {
       background: none;
       border: none;
@@ -27,11 +30,37 @@
       outline: none;
       width: 100%;
     }
-    .line { margin-bottom: 8px; }
+
+    .line {
+      margin-bottom: 8px;
+    }
+
+    .corner-left {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 14px;
+      color: #00aaaa;
+      opacity: 0.6;
+    }
+
+    .corner-right {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 14px;
+      color: #ffaa00;
+      opacity: 0.6;
+    }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
+
+  <!-- Corner credits -->
+  <div class="corner-left">presented by 69</div>
+  <div class="corner-right">presented by 58</div>
+
   <script>
     const terminal = document.getElementById("terminal");
 
