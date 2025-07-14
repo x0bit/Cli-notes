@@ -1,4 +1,4 @@
-name: Generate docs.json
+name: Generate full docs.json
 
 on:
   push:
@@ -11,29 +11,38 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Generate docs.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Generate docs.json recursively
         run: |
           echo '{' > docs.json
-          for dir in sem3/*; do
-            if [ -d "$dir" ]; then
-              subject=$(basename "$dir")
-              echo "  \"$subject\": [" >> docs.json
-              for file in "$dir"/*; do
-                fname=$(basename "$file")
-                echo "    \"https://harnitya29.github.io/sem3/$subject/$fname\"," >> docs.json
-              done
-              sed -i '$ s/,$//' docs.json
-              echo "  ]," >> docs.json
+          first=1
+          while IFS= read -r -d '' file; do
+            relpath="${file#./}"
+            dirname=$(dirname "$relpath")
+            filename=$(basename "$file")
+            url="https://harnitya29.github.io/sem3/$relpath"
+            key="${dirname//\//_}"
+            if [[ $first -eq 1 ]]; then
+              echo "  \"$key\": [\"$url\"" >> docs.json
+              first=0
+            else
+              if grep -q "\"$key\":" docs.json; then
+                sed -i "/\"$key\": \[/a\ \ \"$url\"," docs.json
+              else
+                echo "  ,\"$key\": [\"$url\"" >> docs.json
+              fi
             fi
-          done
-          sed -i '$ s/,$//' docs.json
+          done < <(find . -type f \\( -name '*.pdf' -o -name '*.ppt' -o -name '*.pptx' \\) -print0)
+          sed -i 's/,$//' docs.json
+          echo "  ]" >> docs.json
           echo '}' >> docs.json
 
       - name: Commit docs.json
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "🤖 Auto-generate docs.json"
-          file_pattern: 'docs.json'
+          commit_message: "🤖 Auto-generate full docs.json"
+          file_pattern: docs.json
