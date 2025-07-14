@@ -35,33 +35,57 @@
       margin-bottom: 8px;
     }
 
-    .corner-left {
+    .corner-left, .corner-right {
       position: fixed;
       bottom: 10px;
-      left: 10px;
       font-size: 14px;
-      color: #00aaaa;
       opacity: 0.6;
     }
 
+    .corner-left {
+      left: 10px;
+      color: #00aaaa;
+    }
+
     .corner-right {
-      position: fixed;
-      bottom: 10px;
       right: 10px;
-      font-size: 14px;
       color: #ffaa00;
-      opacity: 0.6;
     }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
 
-  <!-- Corner credits -->
-  <div class="corner-left">presented by 69</div>
-  <div class="corner-right">presented by 58</div>
+  <!-- Corner credit containers -->
+  <div class="corner-left" id="presenterLeft"></div>
+  <div class="corner-right" id="presenterRight"></div>
 
   <script>
+    // Random name generator
+    const presentersLeft = [
+      "presented by 69",
+      "brought to you by 🐍",
+      "engineered by Alpha",
+      "scripted by user_69",
+      "by team leftbrain"
+    ];
+
+    const presentersRight = [
+      "presented by 58",
+      "powered by Delta",
+      "rendered by 🍊",
+      "compiled by user_58",
+      "by team rightbrain"
+    ];
+
+    // Set random presenters
+    document.getElementById("presenterLeft").textContent =
+      presentersLeft[Math.floor(Math.random() * presentersLeft.length)];
+
+    document.getElementById("presenterRight").textContent =
+      presentersRight[Math.floor(Math.random() * presentersRight.length)];
+
+    // Terminal boot logic
     const terminal = document.getElementById("terminal");
 
     const bootLines = [
@@ -179,7 +203,7 @@
       terminal.scrollTop = terminal.scrollHeight;
     }
 
-    // Boot sequence then start shell
+    // Start sequence
     typeLine(bootLines, shellPrompt);
   </script>
 </body>
