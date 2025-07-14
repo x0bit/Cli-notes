@@ -1,44 +1,51 @@
-# sybca Terminal Interface
+# 🖥️ CLI PDF/PPT Reader
 
-🖥️ A retro-styled terminal web page built with HTML, CSS, and JavaScript.  
-Simulates a fake Linux command-line environment.
-
----
-
-## 🚀 Live Demo
-
-🔗 **Hosted on Netlify**:  
-👉 [https://jovial-duckanoo-1eaf9d.netlify.app/](https://jovial-duckanoo-1eaf9d.netlify.app/)
+A web-based Command-Line Interface inspired PDF/PPT reader with file navigation, theme toggle, mobile support, and offline capabilities. Built with **Vue 3** and hosted entirely on **GitHub Pages**.
 
 ---
 
-## 🧪 Supported Commands
+## 🔧 Features
 
-| Command      | Description                    |
-|--------------|--------------------------------|
-| `ls`         | List files/folders             |
-| `cd`         | Navigate fake directories      |
-| `clear`      | Clear the screen               |
-| `help`       | Show help                      |
-| `exit`/`quit`| Redirect to GitHub repo        |
-
----
-
-## 👥 Credits
-
-- Presented by **69** 
-- Presented by **58** 
+- 💾 Load files from a `docs.json` file.
+- 📁 Terminal-style boot-up interface.
+- 🎨 Light/Dark mode toggle.
+- 📱 Mobile responsive with burger menu.
+- 📄 Supports viewing:
+  - PDF (`.pdf`)
+  - PowerPoint (`.ppt`, `.pptx`) via Google Docs Viewer
+  - Text (`.txt`), HTML, JS
+- 📶 Offline support via Service Worker.
+- ⌨️ Command-based interface with basic commands (`help`, `whoami`, `date`, `69`, `clear`).
+- 🧠 Animated boot logs and sound effects.
 
 ---
 
-## 📂 Structure
+## 🚀 Setup & Hosting (GitHub Pages)
 
-- `index.html`: Main file
-- Inline JavaScript & CSS
-- No frameworks used
+1. **Clone or fork this repo**  
+   Or create a new one with this structure:
 
----
+## 🧠 Commands
+```
+- 69: Enter the CLI file viewer
+- help: Show list of commands
+- date: Show current date & time
+- whoami: Show browser info
+- clear: Clear terminal output
+```
 
-## 🧠 License
+## 📱 Mobile
+Burger menu toggles navigation
 
-MIT — Use it freely!
+Tap outside nav to close
+
+Swipe support on touch devices
+
+## 📦 Offline Support
+Service worker caches core assets so the app works offline after first visit.
+
+## 📁 License
+MIT — feel free to use and modify.
+
+## 🙋 Author
+Made with 💻 by [69]
