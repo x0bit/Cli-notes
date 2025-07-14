@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome Terminal</title>
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #00ff88;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 18px;
+      padding: 30px;
+      overflow: hidden;
+    }
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      background-color: #00ff88;
+      animation: blink 1s step-start infinite;
+      margin-left: 5px;
+    }
+    @keyframes blink {
+      50% { background-color: transparent; }
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <script>
+    const lines = [
+      "Initializing system...",
+      "Loading modules...",
+      "Authenticating user...",
+      "Welcome to Project X.",
+      "Status: ONLINE.",
+      ">> Press any key to continue"
+    ];
+    const terminal = document.getElementById("terminal");
+    let i = 0;
+
+    function typeLine() {
+      if (i < lines.length) {
+        let line = document.createElement("div");
+        terminal.appendChild(line);
+        let j = 0;
+        const typer = setInterval(() => {
+          line.textContent += lines[i][j++];
+          if (j === lines[i].length) {
+            clearInterval(typer);
+            i++;
+            setTimeout(typeLine, 500);
+          }
+        }, 40);
+      } else {
+        const cursor = document.createElement("span");
+        cursor.className = "cursor";
+        terminal.appendChild(cursor);
+      }
+    }
+
+    typeLine();
+  </script>
+</body>
+</html>
