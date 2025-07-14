@@ -26,8 +26,8 @@ Simulates a fake Linux command-line environment.
 
 ## 👥 Credits
 
-- Presented by **69** (bottom-left)
-- Presented by **58** (bottom-right)
+- Presented by **69** 
+- Presented by **58** 
 
 ---
 
