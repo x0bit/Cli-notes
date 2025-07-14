@@ -2,115 +2,197 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CLI PDF/PPT Reader</title>
   <script src="https://unpkg.com/vue@3.4.15/dist/vue.global.prod.js"></script>
-
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap">
+  <link rel="manifest" href="manifest.json">
   <style>
+    :root {
+      --bg: #000;
+      --fg: #00ff00;
+    }
+
+    body[data-theme="light"] {
+      --bg: #f0f0f0;
+      --fg: #647b92;
+    }
+
     body {
-      background-color: #000;
-      color: #00ff00;
-      font-family: monospace;
-      padding: 20px;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: 'Fira Code', monospace;
+      padding: 0;
+      margin: 0;
+      transition: background 0.3s, color 0.3s;
     }
     input.cli {
-      background-color: black;
-      color: #00ff00;
-      border: none;
+      background-color: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--fg);
       width: 100%;
-      font-family: monospace;
       padding: 6px;
+      font-family: 'Fira Code', monospace;
     }
     a {
-      color: #00ff00;
-      text-decoration: underline;
+      color: var(--fg);
+      text-decoration: none;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.2s ease-in-out;
+    }
+    a:hover {
+      transform: scale(1.02);
     }
     iframe {
       width: 100%;
       height: 500px;
-      border: 2px solid #00ff00;
-      margin-top: 10px;
-    }
-    textarea {
-      background: black;
-      color: #00ff00;
-      width: 100%;
-      border: 1px solid #00ff00;
-      padding: 10px;
-      font-family: monospace;
+      border: 2px solid var(--fg);
       margin-top: 10px;
     }
     button {
-      background-color: #00ff00;
-      color: black;
-      padding: 5px 10px;
+      background-color: var(--fg);
+      color: var(--bg);
       border: none;
-      margin-top: 10px;
+      padding: 5px 10px;
+      margin: 10px;
+       border-radius: 4px ;
       cursor: pointer;
+      font-family: 'Fira Code', monospace;
     }
-    @media (max-width: 600px) {
-      iframe { height: 300px; }
+
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 300px;
+      padding: 20px;
+      border-right: 1px solid var(--fg);
+      overflow-y: auto;
+    }
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--fg);
+      }
+    }
+    .boot-line {
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .boot-line.visible {
+      opacity: 1;
+    }
+    .cli-output {
+      margin-top: 10px;
+      font-size: 0.9em;
     }
   </style>
 </head>
-<body>
+<body :data-theme="theme">
   <div id="app">
-    <!-- CLI Boot Interface -->
+    <button @click="toggleTheme"> 🌓 </button>
+
     <div v-if="!entered">
-      <div v-for="line in bootLogs" :key="line">{{ line }}</div>
-      > <input class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command: enter /sem3" />
+      <div v-for="(line, i) in displayedBootLogs" :key="i" class="boot-line" :class="{ visible: visibleLines > i }">{{ line }}</div>
+      <div v-if="visibleLines >= bootLogs.length">
+        > <input class="cli" v-model="command" @keyup.enter="processCommand" placeholder="Type command (e.g., help)" autofocus />
+        <div class="cli-output" v-for="msg in outputLogs" :key="msg">{{ msg }}</div>
+      </div>
     </div>
 
-    <!-- File Reader Interface -->
-    <div v-else>
-      <h2>📁 CLI Reader (Guest)</h2>
-      <input class="cli" v-model="searchQuery" placeholder="Search files..." />
+    <div v-else class="container">
+      <div class="sidebar">
+        <h3>📁 Navigation</h3>
+        <input class="cli" v-model="searchQuery" placeholder="Search files..." />
 
-      <ul>
-        <li v-for="(files, subject) in filteredFiles" :key="subject">
-          <strong>{{ subject }}</strong>
-          <ul>
-            <li v-for="file in files" :key="file.name">
-              <a @click="openViewer(file)">{{ file.name }}</a>
-            </li>
-          </ul>
-        </li>
-      </ul>
-
-      <div v-if="viewerUrl">
-        <iframe :src="viewerUrl" allowfullscreen></iframe>
-      </div>
-      <div v-else>
-        <p><em>Select a file to preview...</em></p>
+        <ul>
+          <li v-for="(files, subject) in filteredFiles" :key="subject">
+            <strong>📂 {{ subject }}</strong>
+            <ul>
+              <li v-for="file in files" :key="file.name">
+                <a @click="openViewer(file)">
+                  <span v-html="getFileIcon(file.name)"></span> {{ file.name }}
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
       </div>
 
-      <h4>📝 Notes for: {{ currentDoc }}</h4>
-      <textarea v-model="notes" placeholder="Write your notes here..."></textarea>
-      <button @click="saveNotes">💾 Save Notes</button>
-      <button @click="cdBack">⬅️ cd ..</button>
+      <div class="main">
+        <h2>📄 Viewer ({{ currentDoc || 'No file selected' }})</h2>
+
+        <div v-if="viewerUrl">
+          <iframe :src="viewerUrl" allowfullscreen></iframe>
+        </div>
+        <div v-else>
+          <p><em>Select a file to preview...</em></p>
+        </div>
+
+        <button @click="cdBack">⬅️ cd ..</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const { createApp, ref, reactive, computed } = Vue;
+    const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+
+    const beep = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
 
     createApp({
       setup() {
         const bootLogs = ref([
-          "System booting...",
-          "Modules loaded.",
-          `Welcome to ${window.location.hostname}`,
-          "Type: enter /sem3"
+          "⚙️ Initializing CLI System...",
+          "🔌 Connecting to filesystem...",
+          "🔍 Scanning for files...",
+          `👋 Welcome to ${window.location.hostname}`
         ]);
+
+        const visibleLines = ref(0);
+        const displayedBootLogs = computed(() => bootLogs.value);
+        const outputLogs = ref([]);
 
         const entered = ref(false);
         const command = ref('');
         const searchQuery = ref('');
         const currentDoc = ref('');
         const viewerUrl = ref('');
-        const notes = ref(localStorage.getItem('cliReaderNotes') || '');
+        const theme = ref(localStorage.getItem('cliTheme') || 'dark');
         const files = reactive({});
+
+        onMounted(() => {
+          const interval = setInterval(() => {
+            if (visibleLines.value < bootLogs.value.length) {
+              visibleLines.value++;
+            } else {
+              clearInterval(interval);
+            }
+          }, 1000);
+
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              cdBack();
+            } else if (e.key === 't' && e.ctrlKey) {
+              toggleTheme();
+              e.preventDefault();
+            }
+          });
+        });
 
         const filteredFiles = computed(() => {
           if (!searchQuery.value) return files;
@@ -122,12 +204,32 @@
           return result;
         });
 
+        function toggleTheme() {
+          theme.value = theme.value === 'dark' ? 'light' : 'dark';
+          localStorage.setItem('cliTheme', theme.value);
+        }
+
+        watch(theme, (newTheme) => {
+          document.body.setAttribute('data-theme', newTheme);
+        }, { immediate: true });
+
         function processCommand() {
-          if (command.value.trim().toLowerCase() === 'enter /sem3') {
+          const cmd = command.value.trim().toLowerCase();
+          beep.play();
+
+          if (cmd === '69') {
             entered.value = true;
             loadFiles();
+          } else if (cmd === 'date') {
+            outputLogs.value.push('🕒 ' + new Date().toString());
+          } else if (cmd === 'whoami') {
+            outputLogs.value.push('👤 You are browsing from: ' + navigator.userAgent);
+          } else if (cmd === 'help') {
+            outputLogs.value.push('📘 Available commands: help, date, whoami, 69 , clear');
+          } else if (cmd === 'clear') {
+            outputLogs.value = [];
           } else {
-            bootLogs.value.push(`Unknown command: ${command.value}`);
+            outputLogs.value.push(`❓ Unknown command: ${command.value}`);
           }
           command.value = '';
         }
@@ -136,11 +238,6 @@
           entered.value = false;
           viewerUrl.value = '';
           currentDoc.value = '';
-        }
-
-        function saveNotes() {
-          localStorage.setItem('cliReaderNotes', notes.value);
-          alert('✅ Notes saved locally');
         }
 
         async function loadFiles() {
@@ -166,22 +263,47 @@
           viewerUrl.value = `https://docs.google.com/gview?url=${encodedURL}&embedded=true`;
         }
 
+        function getFileIcon(name) {
+          const ext = name.split('.').pop().toLowerCase();
+          switch (ext) {
+            case 'pdf': return '📕';
+            case 'ppt':
+            case 'pptx': return '📊';
+            case 'txt': return '📜';
+            case 'js': return '📟';
+            case 'html': return '🌐';
+            default: return '📄';
+          }
+        }
+
         return {
           bootLogs,
+          visibleLines,
+          displayedBootLogs,
+          outputLogs,
           entered,
           command,
           searchQuery,
           filteredFiles,
           currentDoc,
-          notes,
           viewerUrl,
+          theme,
+          toggleTheme,
           processCommand,
           cdBack,
-          saveNotes,
-          openViewer
+          openViewer,
+          getFileIcon
         };
       }
     }).mount('#app');
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(() => {
+        console.log('✅ Service Worker Registered');
+      }).catch(err => {
+        console.error('Service Worker registration failed:', err);
+      });
+    }
   </script>
 </body>
 </html>
