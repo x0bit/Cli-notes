@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Welcome Terminal</title>
+  <title>lembard</title>
   <style>
     body {
       background-color: #0f0f0f;
@@ -10,55 +10,148 @@
       font-family: 'Courier New', Courier, monospace;
       font-size: 18px;
       padding: 30px;
-      overflow: hidden;
+      overflow-y: auto;
     }
     .cursor {
       display: inline-block;
       width: 10px;
       background-color: #00ff88;
       animation: blink 1s step-start infinite;
-      margin-left: 5px;
     }
-    @keyframes blink {
-      50% { background-color: transparent; }
+    #terminal input {
+      background: none;
+      border: none;
+      color: #00ff88;
+      font-family: inherit;
+      font-size: inherit;
+      outline: none;
+      width: 100%;
     }
+    .line { margin-bottom: 8px; }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
   <script>
-    const lines = [
+    const terminal = document.getElementById("terminal");
+
+    const bootLines = [
       "Initializing system...",
       "Loading modules...",
       "Authenticating user...",
-      "Welcome to Project X.",
-      "Status: ONLINE.",
-      ">> Press any key to continue"
+      "Welcome to sybca.",
+      "Status: ONLINE."
     ];
-    const terminal = document.getElementById("terminal");
-    let i = 0;
 
-    function typeLine() {
-      if (i < lines.length) {
-        let line = document.createElement("div");
-        terminal.appendChild(line);
-        let j = 0;
-        const typer = setInterval(() => {
-          line.textContent += lines[i][j++];
-          if (j === lines[i].length) {
-            clearInterval(typer);
-            i++;
-            setTimeout(typeLine, 500);
-          }
-        }, 40);
-      } else {
-        const cursor = document.createElement("span");
-        cursor.className = "cursor";
-        terminal.appendChild(cursor);
+    const fakeFS = {
+      "home": ["lembard", "projects"],
+      "projects": ["sybca", "demo.sh"],
+      "sybca": ["README.md", "index.html"]
+    };
+
+    let currentDir = "home";
+
+    function typeLine(lines, callback) {
+      let i = 0;
+      function next() {
+        if (i < lines.length) {
+          let line = document.createElement("div");
+          line.classList.add("line");
+          terminal.appendChild(line);
+          let j = 0;
+          const typer = setInterval(() => {
+            line.textContent += lines[i][j++];
+            if (j === lines[i].length) {
+              clearInterval(typer);
+              i++;
+              setTimeout(next, 400);
+            }
+          }, 40);
+        } else {
+          callback();
+        }
       }
+      next();
     }
 
-    typeLine();
+    function shellPrompt() {
+      const prompt = document.createElement("div");
+      prompt.classList.add("line");
+      prompt.innerHTML = `<span style="color: #0ff">user@sybca</span>:~/$ `;
+      const input = document.createElement("input");
+      input.type = "text";
+      prompt.appendChild(input);
+      terminal.appendChild(prompt);
+      input.focus();
+
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          const command = input.value.trim();
+          input.disabled = true;
+          handleCommand(command.toLowerCase());
+        }
+      });
+    }
+
+    function handleCommand(cmd) {
+      const output = document.createElement("div");
+      output.classList.add("line");
+
+      switch (cmd) {
+        case "help":
+          output.innerHTML = "Available commands: <b>ls</b>, <b>cd</b>, <b>clear</b>, <b>exit</b>, <b>help</b>";
+          break;
+        case "ls":
+          output.textContent = (fakeFS[currentDir] || []).join("    ");
+          break;
+        case "cd":
+          output.textContent = "Usage: cd [dir]";
+          break;
+        case "cd ..":
+          currentDir = "home";
+          output.textContent = "Moved to home";
+          break;
+        case "cd sybca":
+          currentDir = "sybca";
+          output.textContent = "Moved to sybca/";
+          break;
+        case "clear":
+          terminal.innerHTML = "";
+          shellPrompt();
+          return;
+        case "exit":
+        case "quit":
+          output.textContent = "Redirecting to GitHub repo...";
+          terminal.appendChild(output);
+          setTimeout(() => {
+            window.location.href = "https://github.com/lembard/sybca";
+          }, 1200);
+          return;
+        case "":
+          output.textContent = "";
+          break;
+        default:
+          if (cmd.startsWith("cd ")) {
+            const dir = cmd.slice(3);
+            if (fakeFS[dir]) {
+              currentDir = dir;
+              output.textContent = `Moved to ${dir}/`;
+            } else {
+              output.textContent = `cd: no such directory: ${dir}`;
+            }
+          } else {
+            output.textContent = `${cmd}: command not found`;
+          }
+          break;
+      }
+
+      terminal.appendChild(output);
+      shellPrompt();
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // Boot sequence then start shell
+    typeLine(bootLines, shellPrompt);
   </script>
 </body>
 </html>
