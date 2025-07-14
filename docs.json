@@ -1,2 +1,20 @@
 {
+  "OS": [
+    "https://harnitya29.github.io/sem3/OS/ch2.ppt",
+    "https://harnitya29.github.io/sem3/OS/ch1.ppt",
+    "https://harnitya29.github.io/sem3/OS/Chapter 3 Process & IPC.ppt",
+    "https://harnitya29.github.io/sem3/OS/Basics.pptx",
+    "https://harnitya29.github.io/sem3/OS/Assignment 1.pdf"
+  ]
+,
+  "OS_BOOKS": [
+    "https://harnitya29.github.io/sem3/OS/BOOKS/Abraham Silberschatz-Operating System Concepts (9th,2012_12).pdf",
+    "https://harnitya29.github.io/sem3/OS/BOOKS/operating-system-concepts-7-th-edition.pdf",
+    "https://harnitya29.github.io/sem3/OS/BOOKS/Andrew S. Tanenbaum - Modern Operating Systems.pdf"
+  ]
+,
+  "DSA": [
+    "https://harnitya29.github.io/sem3/DSA/Lab-1 Introduction to Data Structures, Algorithm Analysis & Arrays.pdf",
+    "https://harnitya29.github.io/sem3/DSA/steps for find time complexity.pdf"
+  ]
 }
