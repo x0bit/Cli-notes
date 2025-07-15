@@ -16,11 +16,8 @@
     "https://harnitya29.github.io/sem3/OS/Theory/Basics.pptx"
   ]
 ,
-  "DSA": [
-    "https://harnitya29.github.io/sem3/DSA/steps for find time complexity.pdf"
-  ]
-,
   "DSA_Lab": [
-    "https://harnitya29.github.io/sem3/DSA/Lab/Lab-1 Introduction to Data Structures, Algorithm Analysis & Arrays.pdf"
+    "https://harnitya29.github.io/sem3/DSA/Lab/Lab-1 Introduction to Data Structures, Algorithm Analysis & Arrays.pdf",
+    "https://harnitya29.github.io/sem3/DSA/Lab/steps for find time complexity.pdf"
   ]
 }
