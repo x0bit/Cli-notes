@@ -1,12 +1,11 @@
 {
-  "OS": [
-    "https://harnitya29.github.io/sem3/OS/ch2.ppt",
-    "https://harnitya29.github.io/sem3/OS/ch1.ppt",
-    "https://harnitya29.github.io/sem3/OS/Chapter 3 Process & IPC.ppt"
-  ]
-,
   "OS_Lab": [
     "https://harnitya29.github.io/sem3/OS/Lab/Assignment 1.pdf"
+  ]
+,
+  "OS": [
+    "https://harnitya29.github.io/sem3/OS/ch2.ppt",
+    "https://harnitya29.github.io/sem3/OS/ch1.ppt"
   ]
 ,
   "OS_BOOKS": [
@@ -16,6 +15,7 @@
   ]
 ,
   "OS_Theory": [
+    "https://harnitya29.github.io/sem3/OS/Theory/Chapter 3 Process & IPC.ppt",
     "https://harnitya29.github.io/sem3/OS/Theory/Basics.pptx"
   ]
 ,
